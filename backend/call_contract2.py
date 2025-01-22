@@ -1,7 +1,16 @@
 from web3 import Web3
+from eth_account import Account
+from dotenv import load_dotenv
+import os
+import json
+# this code is call_contract.py plus ability to use .env
+# this script will read setting from .env
 
-# Connect to Ethereum network (Alchemy or Infura URL)
-alchemy_url = "https://eth-sepolia.g.alchemy.com/v2/your-api-key"
+# Load environment variables from .env file
+load_dotenv()
+
+# Connect to Ethereum network
+alchemy_url = os.getenv("ALCHEMY_URL")
 web3 = Web3(Web3.HTTPProvider(alchemy_url))
 
 # Check connection
@@ -10,84 +19,39 @@ if not web3.is_connected():
     exit()
 
 # Contract details
-contract_address = "0x71aD7432B246E863b1aFED1f147937820dD327e9"  # Replace with your deployed contract address
-abi = [  # Replace this with your contract's ABI
-    {
-        "anonymous": False,
-        "inputs": [
-            {"indexed": True, "internalType": "address", "name": "insured", "type": "address"},
-            {"indexed": False, "internalType": "string", "name": "policyName", "type": "string"},
-            {"indexed": False, "internalType": "uint256", "name": "premium", "type": "uint256"},
-            {"indexed": False, "internalType": "uint256", "name": "coverageAmount", "type": "uint256"}
-        ],
-        "name": "PolicyCreated",
-        "type": "event"
-    },
-    {
-        "inputs": [
-            {"internalType": "string", "name": "_policyName", "type": "string"},
-            {"internalType": "uint256", "name": "_premium", "type": "uint256"},
-            {"internalType": "uint256", "name": "_coverageAmount", "type": "uint256"}
-        ],
-        "name": "createPolicy",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "getPolicies",
-        "outputs": [
-            {
-                "components": [
-                    {"internalType": "string", "name": "policyName", "type": "string"},
-                    {"internalType": "uint256", "name": "premium", "type": "uint256"},
-                    {"internalType": "uint256", "name": "coverageAmount", "type": "uint256"},
-                    {"internalType": "bool", "name": "isActive", "type": "bool"}
-                ],
-                "internalType": "struct Insurance.Policy[]",
-                "name": "",
-                "type": "tuple[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    }
-]
+contract_address = os.getenv("CONTRACT_ADDRESS")
+contract_abi = json.loads(os.getenv("CONTRACT_ABI"))
 
 # Instantiate the contract
-contract = web3.eth.contract(address=contract_address, abi=abi)
+contract = web3.eth.contract(address=contract_address, abi=contract_abi)
 
-# Set your account (replace with your private key and wallet address)
-account = "0x2D69cad8789CCC676dAFf43C5e63E7523991F8A5"  # Replace with your wallet address
-private_key = "013b3cfaba77202b8c99c0f722ee0a01249b5b70a952b0a2cc7a3d87a87eec2f"  # Replace with your private key
+# Account details
+account_address = os.getenv("ACCOUNT_ADDRESS")
+private_key = os.getenv("PRIVATE_KEY")
 
 # Function 1: Create a new policy
 def create_policy(policy_name, premium, coverage_amount):
     try:
-        # Estimate the gas required for the transaction
-        gas_estimate = contract.functions.createPolicy(policy_name, premium, coverage_amount).estimate_gas({
-            "from": account
-        })
-        print(f"Estimated Gas: {gas_estimate}")
+        # Get the latest gas price
+        gas_price = web3.eth.gas_price
 
-        # Build the transaction with estimated gas
+        # Build the transaction
         transaction = contract.functions.createPolicy(
             policy_name,
             premium,
             coverage_amount
         ).build_transaction({
-            "from": account,
-            "gas": gas_estimate,  # Use the estimated gas
-            "gasPrice": web3.to_wei("5", "gwei"),  # Adjust gas price
-            "nonce": web3.eth.get_transaction_count(account),
+            "from": account_address,
+            "gas": 210000,
+            "gasPrice": gas_price + web3.to_wei(2, "gwei"),  # Increase gas price slightly
+            "nonce": web3.eth.get_transaction_count(account_address),
         })
 
         # Sign the transaction
-        signed_tx = web3.eth.account.sign_transaction(transaction, private_key)
+        signed_tx = Account.sign_transaction(transaction, private_key)
 
         # Send the transaction
-        tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
 
         # Wait for confirmation
         receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
@@ -99,12 +63,12 @@ def create_policy(policy_name, premium, coverage_amount):
 def get_policies():
     try:
         # Call the getPolicies function
-        policies = contract.functions.getPolicies().call({"from": account})
+        policies = contract.functions.getPolicies().call({"from": account_address})
         for policy in policies:
             print(f"Policy Name: {policy[0]}, Premium: {policy[1]}, Coverage: {policy[2]}, Active: {policy[3]}")
     except Exception as e:
         print(f"Error: {e}")
 
 # Example Usage
-create_policy("Health Insurance", 500, 10000)  # Replace with actual values
+create_policy("Car3 Insurance", 300, 30000)  # Replace with actual values
 get_policies()

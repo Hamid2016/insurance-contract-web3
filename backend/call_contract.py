@@ -1,7 +1,6 @@
 from web3 import Web3
 from eth_account import Account
 
-#main code to intract with contract using web3
 # Connect to Ethereum network (Alchemy or Infura URL)
 alchemy_url = "https://eth-sepolia.g.alchemy.com/v2/JP4o2D0nluglljXXm47COL24z3Z2rOJ4"
 web3 = Web3(Web3.HTTPProvider(alchemy_url))
@@ -67,6 +66,9 @@ private_key = "013b3cfaba77202b8c99c0f722ee0a01249b5b70a952b0a2cc7a3d87a87eec2f"
 # Function 1: Create a new policy
 def create_policy(policy_name, premium, coverage_amount):
     try:
+        # Get the latest gas price
+        gas_price = web3.eth.gas_price
+
         # Build the transaction
         transaction = contract.functions.createPolicy(
             policy_name,
@@ -75,7 +77,7 @@ def create_policy(policy_name, premium, coverage_amount):
         ).build_transaction({
             "from": account,
             "gas": 210000,
-            "gasPrice": web3.to_wei("5", "gwei"),
+            "gasPrice": gas_price + web3.to_wei(2, "gwei"),  # Increase gas price slightly
             "nonce": web3.eth.get_transaction_count(account),
         })
 
@@ -102,5 +104,5 @@ def get_policies():
         print(f"Error: {e}")
 
 # Example Usage
-create_policy("Personal Insurance", 200, 30000)  # Replace with actual values
+create_policy("Car Insurance", 300, 30000)  # Replace with actual values
 get_policies()
