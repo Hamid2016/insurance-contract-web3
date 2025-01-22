@@ -70,5 +70,5 @@ def get_policies():
         print(f"Error: {e}")
 
 # Example Usage
-create_policy("Car3 Insurance", 300, 30000)  # Replace with actual values
+create_policy("Car4 Insurance", 300, 30000)  # Replace with actual values
 get_policies()
